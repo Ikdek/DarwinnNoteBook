@@ -1,4 +1,4 @@
-from app import app, bcrypt
+from app import app, bcrypt, module_detection
 from flask import jsonify, request
 from flask_jwt_extended import (
     create_access_token,
