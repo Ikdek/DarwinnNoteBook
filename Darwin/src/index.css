@@ -3,18 +3,13 @@ html {
   margin: 0;
   padding: 0;
   width: 100%;
-  min-height: 100%;
-  background-color: #202025;
+  height: 100%;
+  background-color: #121214;
   color: white;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
+  height: 100%;
 }
