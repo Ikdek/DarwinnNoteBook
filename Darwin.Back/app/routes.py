@@ -160,6 +160,12 @@ def get_current_user():
 #========= ROUTES DE RECHERCHES INATURALIST ===========
 
 def requestInaturalist(animal):
+
+    """
+    :param animal: str (doit venir de notre modèle d'IA)
+    :return: json avec les informations de l'animal en question
+    """
+
     url = "https://api.inaturalist.org/v1/taxa/autocomplete"
     params = {
         "q":animal,
