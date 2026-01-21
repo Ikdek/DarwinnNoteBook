@@ -120,7 +120,7 @@ const ThreeScene = ({ className }) => {
         async function initModels() {
             try {
                 const results = await Promise.all(modelPaths.map(p =>
-                    loadAndPrepareModel(p).catch(e => null)
+                    loadAndPrepareModel(p).catch(() => null)
                 ));
 
                 if (!isMounted) return;
