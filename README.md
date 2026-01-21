@@ -4,3 +4,8 @@
 - Corentin LEYS
 - Axel CASTELOOT
 - Jules PAUCHET
+
+
+Schéma d'architecture : 
+
+![Schéma](assets/Darwinn%20Notebook.drawio.png)
