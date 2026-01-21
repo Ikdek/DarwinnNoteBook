@@ -163,7 +163,8 @@ def requestInaturalist(animal):
     url = "https://api.inaturalist.org/v1/taxa/autocomplete"
     params = {
         "q":animal,
-        "per_page":1
+        "per_page":1,
+        "locale":"fr"
     }
 
     response = requests.get(url, params=params)
@@ -175,9 +176,11 @@ def requestInaturalist(animal):
             animals = data['results'][0]
             return jsonify({
                 'success': True,
+                'animal_id': animals.get('id'),
                 'common_name': animals.get("preferred_common_name"),
                 'scientific_name': animals.get("name"),
-                'data': animals
+                'observation_count': animals.get("observations_count"),
+                "image_url": animals['default_photo']["medium_url"],
             })
         else:
             return jsonify({'success': False, 'message': 'Aucun résultat trouvé'}), 404
