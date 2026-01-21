@@ -7,6 +7,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     get_jwt
 )
+import requests
 
 
 users_db = {}
@@ -15,7 +16,7 @@ token_blocklist = set()
 @app.route('/')
 @app.route('/index')
 def index():
-    return "Hello World"
+    return requestInaturalist("cheetah")
 
 @app.route('/aurevoir')
 def aurevoir():
@@ -154,3 +155,33 @@ def get_current_user():
         'id': user['id'],
         'email': user['email']
     }), 200
+
+
+#========= ROUTES DE RECHERCHES INATURALIST ===========
+
+def requestInaturalist(animal):
+    url = "https://api.inaturalist.org/v1/taxa/autocomplete"
+    params = {
+        "q":animal,
+        "per_page":1
+    }
+
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        if data['results']:
+            animals = data['results'][0]
+            return jsonify({
+                'success': True,
+                'common_name': animals.get("preferred_common_name"),
+                'scientific_name': animals.get("name"),
+                'data': animals
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Aucun résultat trouvé'}), 404
+
+    else:
+        return jsonify({'success': False, 'message': f'Erreur API: {response.status_code}'}), response.status_code
+
