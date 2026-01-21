@@ -1,8 +1,6 @@
-from transformers import pipeline
 import nltk
 from nltk.corpus import wordnet
 
-model_detection = pipeline("image-classification", model="google/vit-base-patch16-224")
 
 try:
     nltk.data.find('corpora/wordnet.zip')

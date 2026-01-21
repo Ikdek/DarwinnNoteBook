@@ -8,6 +8,9 @@ from flask_jwt_extended import (
     get_jwt
 )
 import requests
+from PIL import Image
+import base64
+import io
 
 
 users_db = {}
@@ -194,3 +197,24 @@ def requestInaturalist(animal):
     else:
         return jsonify({'success': False, 'message': f'Erreur API: {response.status_code}'}), response.status_code
 
+@app.route('api/classification', methods=['POST'])
+def classification():
+    """
+    Reçoit l'image du front-end et l'analyse dans le back-end
+    :return: les informations de INaturalist si organisme ou alors une erreur si ce n'est pas un organisme
+    """
+
+    try:
+        if 'image' in request.files:
+            image_file = request.files['image']
+            image = Image.open(image_file)
+        elif 'imageData' in request.json:
+            image_data = request.json['imageData'].split(',')[1]
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(io.BytesIO(image_bytes))
+        else:
+            return jsonify({'error' : 'Aucune image fournie'}), 400
+
+
+    except IOError:
+        pass
