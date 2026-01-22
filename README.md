@@ -151,6 +151,11 @@ Projet en cours de développement.
 
 ---
 
+Diagramme 
+
+[Diagramme.drawio (1).pdf](https://github.com/user-attachments/files/24802691/Diagramme.drawio.1.pdf)
+
+---
 
 **Auteurs de l'application :**
 - Rémi EECKHOUT
