@@ -12,6 +12,7 @@ from PIL import Image
 import base64
 import io
 
+model_detection = app.config['MODEL_DETECTION']
 
 users_db = {}
 token_blocklist = set()
@@ -197,7 +198,7 @@ def requestInaturalist(animal):
     else:
         return jsonify({'success': False, 'message': f'Erreur API: {response.status_code}'}), response.status_code
 
-@app.route('api/classification', methods=['POST'])
+@app.route('/api/classification', methods=['POST'])
 def classification():
     """
     Reçoit l'image du front-end et l'analyse dans le back-end
@@ -215,6 +216,16 @@ def classification():
         else:
             return jsonify({'error' : 'Aucune image fournie'}), 400
 
+        predictions = model_detection(image)
+        top_prediction = predictions[0]
+        predicted_label = top_prediction['label'].split(', ')[0]
+        score = top_prediction['score']
+
+        if module_detection.is_this_an_organism(predicted_label):
+            inaturalist_response = requestInaturalist(predicted_label)
+            return inaturalist_response
+        else:
+            return jsonify({'error': 'L\'image ne correspond pas à un organisme vivant'}), 400
 
     except IOError:
         pass
