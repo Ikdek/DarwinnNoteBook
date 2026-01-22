@@ -152,7 +152,7 @@ Projet en cours de développement.
 ---
 
 
-**Auteur de l'application :**
+**Auteurs de l'application :**
 - Rémi EECKHOUT
 - Thibault CAMBIEN
 - Corentin LEYS
