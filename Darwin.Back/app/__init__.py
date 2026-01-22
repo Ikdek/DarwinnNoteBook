@@ -5,6 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+from transformers import pipeline
+
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -20,5 +22,8 @@ app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
+
+model_detection = pipeline("image-classification", model="google/vit-base-patch16-224")
+app.config['MODEL_DETECTION'] = model_detection
 
 from app import routes
