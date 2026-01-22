@@ -22,7 +22,7 @@ Le jeu s’adresse à deux profils :
 
     - Plantes
 
-    - Mammifères
+    - Animaux
 
 ---
 
