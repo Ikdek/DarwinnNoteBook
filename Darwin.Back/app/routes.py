@@ -190,3 +190,5 @@ def classification():
     except IOError:
         pass
 
+#========= ROUTES DE CAPTURE ===========
+
