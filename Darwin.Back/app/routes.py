@@ -1,7 +1,10 @@
 import datetime
 
 from app import app, bcrypt, module_detection, db
-from app.models import User, Collection
+from app.models import User, Scan, Collection
+import os
+import uuid
+import json
 from flask import jsonify, request
 from flask_jwt_extended import (
     create_access_token,
@@ -167,6 +170,7 @@ def classification():
     Reçoit l'image du front-end et l'analyse dans le back-end
     :return: les informations de INaturalist si organisme ou alors une erreur si ce n'est pas un organisme
     """
+    current_user_id = get_jwt_identity()
 
     try:
         if 'image' in request.files:
@@ -178,20 +182,80 @@ def classification():
             image = Image.open(io.BytesIO(image_bytes))
         else:
             return jsonify({'error' : 'Aucune image fournie'}), 400
+            
+        # Save Image
+        upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+            
+        filename = f"scan_{current_user_id}_{uuid.uuid4().hex}.jpg"
+        filepath = os.path.join(upload_dir, filename)
+        
+        # Save a copy for storage
+        img_to_save = image.copy()
+        if img_to_save.mode in ("RGBA", "P"):
+            img_to_save = img_to_save.convert("RGB")
+        img_to_save.save(filepath)
+        
+        web_path = f"static/uploads/{filename}"
 
         predictions = model_detection(image)
         top_prediction = predictions[0]
         predicted_label = top_prediction['label'].split(', ')[0]
         score = top_prediction['score']
 
+        inaturalist_response = None
+        resp_data = {}
+
         if module_detection.is_this_an_organism(predicted_label):
-            inaturalist_response = requestInaturalist(predicted_label)
-            return inaturalist_response
+            # Tenter de charger depuis la base de données locale
+            cached_data = module_detection.load_animal(predicted_label)
+            
+            if cached_data:
+                inaturalist_response = jsonify(cached_data)
+            else:
+                # Sinon, interroger l'API iNaturalist
+                inaturalist_response = requestInaturalist(predicted_label)
+                
+                # Sauvegarder dans la base de données si la requête a réussi
+                try:
+                    resp_obj = inaturalist_response
+                    status_code = 200
+                    if isinstance(inaturalist_response, tuple):
+                        resp_obj, status_code = inaturalist_response
+                    
+                    if status_code == 200:
+                         data = resp_obj.get_json()
+                         module_detection.save_animal(data)
+                except Exception as e:
+                    print(f"Erreur lors du caching : {e}")
+
         else:
-            return jsonify({'error': 'L\'image ne correspond pas à un organisme vivant'}), 400
+            inaturalist_response = (jsonify({'error': 'L\'image ne correspond pas à un organisme vivant'}), 400)
+
+        # Extract data for DB
+        resp_obj = inaturalist_response
+        if isinstance(inaturalist_response, tuple):
+             resp_obj, _ = inaturalist_response
+             
+        if hasattr(resp_obj, 'get_json'):
+             resp_data = resp_obj.get_json()
+        
+        # Create Scan record
+        new_scan = Scan(
+            user_id=current_user_id,
+            image_path=web_path,
+            inaturalist_response=json.dumps(resp_data)
+        )
+        db.session.add(new_scan)
+        db.session.commit()
+        
+        return inaturalist_response
 
     except IOError:
-        pass
+        return jsonify({'error': 'Erreur lors du traitement de l\'image'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Erreur serveur: {str(e)}'}), 500
 
 #========= ROUTES DE CAPTURE ===========
 
