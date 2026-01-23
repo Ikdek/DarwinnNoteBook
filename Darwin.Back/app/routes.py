@@ -1,3 +1,5 @@
+import datetime
+
 from app import app, bcrypt, module_detection, db
 from app.models import User, Collection
 from flask import jsonify, request
@@ -197,11 +199,48 @@ def classification():
 @jwt_required()
 def capture():
     """
-    Le but de cette route est de capturer un animal pour le mettre dans la collection
-    :return:
+    Capture un animal pour le mettre dans la collection
     """
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': 'Aucune donnée fournie'}), 400
+        
+        record = Collection(
+            idUser=int(current_user_id),
+            timestamp=datetime.datetime.now(),
+            animal_id=data.get('animal_id'),
+            animal_common_name=data.get('animal_common_name'),
+            animal_scientific_name=data.get('animal_scientific_name'),
+            rarity=data.get('rarity'),
+            image_url=data.get('image_url')
+        )
+        
+        db.session.add(record)
+        db.session.commit()
 
-    current_user_id = get_jwt_identity()
+        return jsonify({
+            'success': True,
+            'data': {
+                'id': record.id,
+                'animal_id': record.animal_id,
+                'common_name': record.animal_common_name,
+                'scientific_name': record.animal_scientific_name,
+                'rarity': record.rarity,
+                'image_url': record.image_url,
+                'timestamp': record.timestamp.isoformat()
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors de la capture: {str(e)}'
+        }), 500
+
 
 
 @app.route('/api/load-collection', methods=['GET'])
