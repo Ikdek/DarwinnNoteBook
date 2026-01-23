@@ -153,7 +153,19 @@ Projet en cours de développement.
 
 Diagramme 
 
-[Diagramme.drawio (1).pdf](https://github.com/user-attachments/files/24802691/Diagramme.drawio.1.pdf)
+- Diagramme Use Case :
+
+<img width="980" height="752" alt="image" src="https://github.com/user-attachments/assets/45203ed4-375e-4eeb-aaa2-222486a71a55" />
+
+- Diagramme de Séquence :
+
+<img width="980" height="1272" alt="image" src="https://github.com/user-attachments/assets/c26c1822-796b-4d1f-8bd1-cd3329743d46" />
+
+- Diagramme D'État : 
+
+<img width="980" height="866" alt="image" src="https://github.com/user-attachments/assets/2a0a1a2d-c02d-4dc6-a387-8cf0837739be" />
+
+<img width="1724" height="1056" alt="image" src="https://github.com/user-attachments/assets/dff75c8f-aa2c-4a38-a1a4-2e6787e4556b" />
 
 ---
 
