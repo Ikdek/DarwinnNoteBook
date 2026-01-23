@@ -151,6 +151,12 @@ Projet en cours de développement.
 
 ---
 
+Design Fonctionnel de l'application 
+
+https://www.figma.com/make/tHZZR6Xv8MdadLE9LzeCFD/Darwin-NoteBook?p=f&t=Jvtp7RmkQaOG0eB5-0
+
+---
+
 Diagramme 
 
 - Diagramme Use Case :
