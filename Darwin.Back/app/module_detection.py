@@ -9,6 +9,9 @@ except LookupError:
     nltk.download('omw-1.4')
 
 
+from app import db
+from app.models import Species
+
 def is_this_an_organism(predicted_label):
     """
     :param predicted_label: str
@@ -28,14 +31,54 @@ def is_this_an_organism(predicted_label):
                     return True
     return False
 
-def load_animal():
+def load_animal(name):
     """
-    Dans l'idée, cette fonction servira à charger les animaux depuis une base de données et non depuis l'API de INaturalist.
+    Charge les informations d'un animal depuis la base de données.
+    :param name: str (nom scientifique ou commun)
+    :return: dict or None
     """
-    pass
+    # Recherche par nom scientifique ou nom commun
+    species = Species.query.filter(
+        (Species.scientific_name == name) | 
+        (Species.common_name == name)
+    ).first()
+    
+    if species:
+        return {
+            'success': True,
+            'animal_id': species.inaturalist_id,
+            'common_name': species.common_name,
+            'scientific_name': species.scientific_name,
+            'observation_count': species.observation_count,
+            'image_url': species.image_url,
+            'source': 'local_db'
+        }
+    return None
 
-def save_animal():
+def save_animal(data):
     """
-    Dans l'idée, cette fonction servira à sauvegarder les animaux dans une base de données pour s'en servir au prochain scan
+    Sauvegarde les informations d'un animal dans la base de données.
+    :param data: dict (données renvoyées par iNaturalist)
     """
-    pass
+    try:
+        # Vérifier si l'animal existe déjà
+        scientific_name = data.get('scientific_name')
+        if not scientific_name:
+            return
+
+        existing_species = Species.query.filter_by(scientific_name=scientific_name).first()
+        if existing_species:
+            return
+
+        new_species = Species(
+            scientific_name=scientific_name,
+            common_name=data.get('common_name'),
+            image_url=data.get('image_url'),
+            inaturalist_id=data.get('animal_id'),
+            observation_count=data.get('observation_count')
+        )
+        db.session.add(new_species)
+        db.session.commit()
+    except Exception as e:
+        print(f"Erreur lors de la sauvegarde de l'espèce: {e}")
+        db.session.rollback()

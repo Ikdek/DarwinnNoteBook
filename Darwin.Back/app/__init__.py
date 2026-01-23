@@ -27,3 +27,6 @@ model_detection = pipeline("image-classification", model="google/vit-base-patch1
 app.config['MODEL_DETECTION'] = model_detection
 
 from app import routes
+
+with app.app_context():
+    db.create_all()
