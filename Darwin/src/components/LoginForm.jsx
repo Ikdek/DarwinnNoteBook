@@ -71,7 +71,7 @@ export default function LoginForm({ onSwitch }) {
                         type="email"
                         id="email"
                         name="email"
-                        placeholder="exemple@email.com"
+                        placeholder="darwin@evolution.com"
                         value={formData.email}
                         onChange={handleChange}
                         required
@@ -84,7 +84,7 @@ export default function LoginForm({ onSwitch }) {
                         type="password"
                         id="password"
                         name="password"
-                        placeholder="••••••••"
+                        placeholder="Votre secret..."
                         value={formData.password}
                         onChange={handleChange}
                         required

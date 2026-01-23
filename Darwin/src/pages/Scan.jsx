@@ -9,6 +9,7 @@ const Scan = () => {
     const [error, setError] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState(null);
+    const [autoScan, setAutoScan] = useState(true); // Default to auto scan
 
     const startCamera = async () => {
         try {
@@ -18,6 +19,9 @@ const Scan = () => {
             setStream(mediaStream);
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
+                videoRef.current.onloadedmetadata = () => {
+                    videoRef.current.play();
+                };
             }
         } catch (err) {
             console.error("Camera access error:", err);
@@ -32,46 +36,56 @@ const Scan = () => {
         }
     };
 
+    // Main Control Effect
     useEffect(() => {
-        if (!capturedImage && !analysisResult) {
+        if (autoScan && !analysisResult) {
             startCamera();
+        } else {
+            stopCamera();
         }
+        return () => stopCamera();
+    }, [autoScan, analysisResult]);
+
+    // Auto Scan Interval
+    useEffect(() => {
+        let intervalId;
+
+        if (autoScan && !analysisResult && stream && !isAnalyzing) {
+            intervalId = setInterval(() => {
+                captureAndAnalyze();
+            }, 2000); // Check every 2 seconds
+        }
+
         return () => {
-            stopCamera();
+            if (intervalId) clearInterval(intervalId);
         };
-    }, [capturedImage, analysisResult]);
+    }, [autoScan, analysisResult, stream, isAnalyzing]);
 
-    const handleCapture = () => {
-        if (videoRef.current && canvasRef.current) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
+    const captureAndAnalyze = async () => {
+        if (!videoRef.current || !canvasRef.current || isAnalyzing) return;
 
-            // Set canvas dimensions to match video
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
 
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Use a smaller size for speed if possible
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
-            const imageDataUrl = canvas.toDataURL('image/png');
-            setCapturedImage(imageDataUrl);
-            stopCamera();
-        }
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8); // Compress slightly
+
+        await performAnalysis(imageDataUrl, true);
     };
 
-    const handleRetake = () => {
-        setCapturedImage(null);
-        setAnalysisResult(null);
-        setError(null);
-    };
-
-    const handleConfirm = async () => {
+    const performAnalysis = async (imageData, isAuto = false) => {
         setIsAnalyzing(true);
-        setError(null);
+        if (!isAuto) setError(null); // only reset error on manual
 
         const token = localStorage.getItem('token');
         if (!token) {
-            setError("Vous devez être connecté pour analyser une image.");
+            setError("Vous devez être connecté.");
             setIsAnalyzing(false);
             return;
         }
@@ -83,56 +97,69 @@ const Scan = () => {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ imageData: capturedImage })
+                body: JSON.stringify({ imageData: imageData })
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
-                if (data.error) {
-                    throw new Error(data.error);
+            if (response.ok) {
+                // Success! Organism found
+                setCapturedImage(imageData); // Freeze the frame
+                setAnalysisResult(data);
+                setAutoScan(false); // Stop scanning
+            } else {
+                // Not found or error
+                if (!isAuto) {
+                    // Manual mode: show error
+                    setError(data.error || "Rien de connu détecté.");
+                } else {
+                    // Auto mode: ignore and retry
+                    console.log("Auto-scan: nothing detected or " + data.error);
                 }
-                throw new Error("Erreur lors de l'analyse.");
             }
-
-            setAnalysisResult(data);
 
         } catch (err) {
             console.error("Analysis error:", err);
-            setError(err.message || "Une erreur est survenue lors de l'analyse.");
+            if (!isAuto) setError("Erreur réseau ou serveur.");
         } finally {
             setIsAnalyzing(false);
         }
     };
 
-    if (error) {
-        return (
-            <div className="scan-container">
-                <div style={{
-                    color: 'white',
-                    textAlign: 'center',
-                    marginTop: '50%',
-                    padding: '20px'
-                }}>
-                    <p>{error}</p>
-                    <button
-                        className="btn-secondary"
-                        onClick={handleRetake}
-                        style={{ marginTop: '20px' }}
-                    >
-                        Réessayer
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    // Manual Capture (for "Force" or fallback)
+    const handleManualCapture = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const img = canvas.toDataURL('image/jpeg', 0.9);
+            performAnalysis(img, false);
+        }
+    };
+
+    const handleRetake = () => {
+        setCapturedImage(null);
+        setAnalysisResult(null);
+        setError(null);
+        setAutoScan(true); // Restart loop
+    };
 
     return (
         <div className="scan-container">
-            {isAnalyzing && (
+            {error && (
+                <div className="analyzing-overlay" style={{ background: 'rgba(0,0,0,0.8)', zIndex: 30 }}>
+                    <p style={{ color: 'white', padding: '20px', textAlign: 'center' }}>{error}</p>
+                    <button className="btn-secondary" onClick={() => setError(null)}>Fermer</button>
+                </div>
+            )}
+
+            {isAnalyzing && !autoScan && (
+                /* Only show spinner on manual analysis, auto is silent */
                 <div className="analyzing-overlay">
                     <div className="spinner"></div>
-                    <div className="analyzing-text">Analyse en cours...</div>
+                    <div className="analyzing-text">Analyse...</div>
                 </div>
             )}
 
@@ -156,8 +183,8 @@ const Scan = () => {
                             {analysisResult.image_url && (
                                 <img src={analysisResult.image_url} alt="Reference" className="result-image" />
                             )}
-                            <div>
-                                <div style={{ fontSize: '0.9rem', color: '#ccc' }}>
+                            <div className="result-details">
+                                <div style={{ fontSize: '0.9rem' }}>
                                     Observations: {analysisResult.observation_count}
                                 </div>
                             </div>
@@ -165,34 +192,29 @@ const Scan = () => {
 
                         <div className="result-actions">
                             <button className="btn-secondary" onClick={handleRetake}>Scanner un autre</button>
-                            <button className="btn-primary" onClick={() => {/* Navigate to collection or details */ }}>Voir détails</button>
+                            <button className="btn-primary">Voir détails</button>
                         </div>
                     </div>
-                </div>
-            ) : capturedImage ? (
-                <div className="captured-image-container">
-                    <img src={capturedImage} alt="Captured" className="captured-image" />
-                    {!isAnalyzing && (
-                        <div className="action-buttons">
-                            <button className="btn-secondary" onClick={handleRetake}>Reprendre</button>
-                            <button className="btn-primary" onClick={handleConfirm}>Analyser</button>
-                        </div>
-                    )}
                 </div>
             ) : (
                 <>
                     <video
                         ref={videoRef}
-                        autoPlay
                         playsInline
                         className="camera-feed"
                         muted
+                        style={{ display: capturedImage && !autoScan ? 'none' : 'block' }}
                     />
+                    {/* Show frozen image if we manually captured but waiting or error */}
+                    {capturedImage && !autoScan && !analysisResult && (
+                        <img src={capturedImage} className="camera-feed" alt="frozen" />
+                    )}
+
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
 
                     <div className="scan-overlay">
                         <div className="scan-header">
-                            <h2>Scanner un spécimen</h2>
+                            <h2>{isAnalyzing ? "Analyse en cours..." : "Recherche de spécimen..."}</h2>
                         </div>
 
                         <div className="viewfinder">
@@ -200,13 +222,15 @@ const Scan = () => {
                             <div className="viewfinder-corner top-right"></div>
                             <div className="viewfinder-corner bottom-left"></div>
                             <div className="viewfinder-corner bottom-right"></div>
-                            <div className="scan-line"></div>
+                            {isAnalyzing && <div className="scan-line"></div>}
                         </div>
 
                         <div className="controls-area">
-                            <button className="shutter-button" onClick={handleCapture} aria-label="Prendre une photo">
-                                <div className="shutter-inner"></div>
-                            </button>
+                            {!isAnalyzing && (
+                                <button className="shutter-button" onClick={handleManualCapture} aria-label="Forcer l'analyse">
+                                    <div className="shutter-inner"></div>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </>
