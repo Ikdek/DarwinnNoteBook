@@ -1,5 +1,7 @@
+import datetime
+
 from app import app, bcrypt, module_detection, db
-from app.models import User
+from app.models import User, Collection
 from flask import jsonify, request
 from flask_jwt_extended import (
     create_access_token,
@@ -92,7 +94,7 @@ def refresh():
 def logout():
     jti = get_jwt()['jti']
     token_blocklist.add(jti)
-    
+
     return jsonify({'message': 'Déconnexion réussie'}), 200
 
 @app.route('/api/protected', methods=['GET'])
@@ -159,6 +161,7 @@ def requestInaturalist(animal):
         return jsonify({'success': False, 'message': f'Erreur API: {response.status_code}'}), response.status_code
 
 @app.route('/api/classification', methods=['POST'])
+@jwt_required()
 def classification():
     """
     Reçoit l'image du front-end et l'analyse dans le back-end
@@ -189,4 +192,106 @@ def classification():
 
     except IOError:
         pass
+
+#========= ROUTES DE CAPTURE ===========
+
+@app.route('/api/capture', methods=['POST'])
+@jwt_required()
+def capture():
+    """
+    Capture un animal pour le mettre dans la collection
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': 'Aucune donnée fournie'}), 400
+        
+        record = Collection(
+            idUser=int(current_user_id),
+            timestamp=datetime.datetime.now(),
+            animal_id=data.get('animal_id'),
+            animal_common_name=data.get('animal_common_name'),
+            animal_scientific_name=data.get('animal_scientific_name'),
+            rarity=data.get('rarity'),
+            image_url=data.get('image_url')
+        )
+        
+        db.session.add(record)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'id': record.id,
+                'animal_id': record.animal_id,
+                'common_name': record.animal_common_name,
+                'scientific_name': record.animal_scientific_name,
+                'rarity': record.rarity,
+                'image_url': record.image_url,
+                'timestamp': record.timestamp.isoformat()
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors de la capture: {str(e)}'
+        }), 500
+
+
+
+@app.route('/api/load-collection', methods=['GET'])
+@jwt_required()
+def load_collection():
+    """
+    Charge toutes les collections d'un utilisateur
+    :return: Liste des animaux collectés par l'utilisateur
+    """
+
+    try:
+        current_user_id = get_jwt_identity()
+        
+        collections = Collection.query.filter_by(idUser=int(current_user_id)).all()
+        
+        if not collections:
+            return jsonify({
+                'success': True,
+                'collection': [],
+                'message': 'Aucun animal dans la collection'
+            }), 200
+        
+        collection_data = []
+        for item in collections:
+            collection_data.append({
+                'id': item.id,
+                'animal_id': item.animal_id,
+                'common_name': item.animal_common_name,
+                'scientific_name': item.animal_scientific_name,
+                'rarity': item.rarity,
+                'image_url': item.image_url,
+                'timestamp': item.timestamp.isoformat()
+            })
+        
+        return jsonify({
+            'success': True,
+            'collection': collection_data,
+            'count': len(collection_data)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors du chargement de la collection: {str(e)}'
+        }), 500
+            
+
+
+
+
+
+
+
 
