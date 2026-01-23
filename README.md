@@ -169,6 +169,12 @@ Diagramme
 
 ---
 
+Schéma d'architecture : 
+
+![Schéma](assets/Darwinn%20Notebook.drawio.png)
+
+--- 
+
 **Auteurs de l'application :**
 - Rémi EECKHOUT
 - Thibault CAMBIEN
@@ -176,7 +182,3 @@ Diagramme
 - Axel CASTELOOT
 - Jules PAUCHET
 
-
-Schéma d'architecture : 
-
-![Schéma](assets/Darwinn%20Notebook.drawio.png)
